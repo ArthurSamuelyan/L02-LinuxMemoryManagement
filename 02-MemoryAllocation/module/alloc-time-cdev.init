@@ -1,0 +1,56 @@
+#!/bin/bash
+
+DEVICE_OWNER=arthur:arthur
+DEVICE="alloc-time-cdev"
+INSMOD=/sbin/insmod
+RMMOD=/sbin/rmmod
+MAJOR=243
+MINOR=1
+
+if [ "$(id -u)" != 0 ]; then
+    echo "Error: Root is needed."
+    exit 1
+fi
+
+function load_device() {
+    $INSMOD $DEVICE.ko
+    if [ "$?" != "0" ]; then
+        echo "Error: Cannot insmod module."
+        exit 1
+    fi
+    mknod /dev/$DEVICE c $MAJOR $MINOR
+    chown $DEVICE_OWNER /dev/$DEVICE
+    chmod 777 /dev/$DEVICE
+}
+
+function unload_device() {
+    $RMMOD $DEVICE.ko
+    if [ "$?" != "0" ]; then
+        echo "Error: Cannot unload module."
+        exit 1
+    fi
+    rm -rvf /dev/$DEVICE
+}
+
+case "$1" in
+    start)
+        echo "Info: Loading $DEVICE."
+        load_device
+        ;;
+    stop)
+        echo "Info: Unloading $DEVICE."
+        unload_device
+        ;;
+    restart)
+        echo "Info: Reloading $DEVICE."
+        unload_device
+        load_device
+        ;;
+    *)
+        echo "Error: Usage: $0 <start|stop>"
+        exit 1
+        ;;
+esac
+
+dmesg | tail
+exit 0
